@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>Bayesian Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg-light: #f7f8fa;
+  --text-light: #111;
+  --bg-dark: #1c1c1c;
+  --text-dark: #f2f2f2;
+  --card-light: #fff;
+  --card-dark: #2a2a2a;
+  --accent: #0096ff;
+  font-family: "Inter", system-ui, sans-serif;
+}
+body {
+  background: var(--bg-light);
+  color: var(--text-light);
+  margin: 0;
+  transition: background 0.3s, color 0.3s;
+}
+[data-theme="dark"] body {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+}
+.container {
+  max-width: 480px;
+  margin: 4em auto;
+  padding: 2em;
+  border-radius: 12px;
+  background: var(--card-light);
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  text-align: center;
+  transition: background 0.3s;
+}
+[data-theme="dark"] .container {
+  background: var(--card-dark);
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+h2 {
+  margin-bottom: 1.2em;
+  color: var(--accent);
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+}
+input[type="number"] {
+  padding: 0.6em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1em;
+  background: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+  padding: 0.6em 1.2em;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 2px 5px rgba(0,0,0,.1);
+  transition: background 0.2s, transform 0.1s;
+}
+button:hover {
+  background: #007ae0;
+  transform: translateY(-1px);
+}
+.result {
+  margin-top: 1.4em;
+  font-size: 1.1em;
+  font-weight: 500;
+}
+small {
+  opacity: 0.8;
+}
+#copyMsg {
+  opacity: 0;
+  font-size: 0.9em;
+  transition: opacity 0.3s;
+  margin-top: 0.5em;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Bayesian Calculator</h2>
+
+  <form id="bayesForm">
+    <label>Prior Probability:</label>
+    <input type="number" id="prior" step="0.0001" min="0" max="1" required>
+    <label>Likelihood if True:</label>
+    <input type="number" id="like" step="0.0001" min="0" max="1" required>
+    <label>Likelihood if False:</label>
+    <input type="number" id="like_not" step="0.0001" min="0" max="1" required>
+    <button type="submit">Compute Posterior</button>
+  </form>
+
+  <div id="result" class="result"></div>
+
+  <button id="copyBtn" style="margin-top:1em; display:none;">Copy Result URL</button>
+  <p id="copyMsg">Copied!</p>
+
+  <img id="chartImg" 
+       src="" 
+       alt="Bayesian chart"
+       style="display:none;margin-top:1.5em;border-radius:8px;max-width:100%;box-shadow:0 0 8px rgba(0,0,0,.2);">
+
+  <div class="toggle-copy" style="margin-top:1.4em;">
+    <button id="themeToggle">🌙 Dark</button>
+  </div>
+
+  <div style="margin-top:1.5em;">
+    <small>Results and theme persist automatically.</small>
+  </div>
+</div>
+
+<script>
+// Theme
+const root = document.documentElement;
+const savedTheme = localStorage.getItem('theme') || 'light';
+root.setAttribute('data-theme', savedTheme);
+document.getElementById('themeToggle').textContent =
+  savedTheme === 'light' ? '🌙 Dark' : '☀️ Light';
+
+document.getElementById('themeToggle').onclick = () => {
+  const cur = root.getAttribute('data-theme');
+  const next = cur === 'light' ? 'dark' : 'light';
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('themeToggle').textContent =
+    next === 'light' ? '🌙 Dark' : '☀️ Light';
+};
+
+// Bayes
+function bayes(prior, like, like_not) {
+  const num = like * prior;
+  const den = num + like_not * (1 - prior);
+  return den === 0 ? 0 : num / den;
+}
+
+document.getElementById('bayesForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const prior = parseFloat(document.getElementById('prior').value);
+  const like = parseFloat(document.getElementById('like').value);
+  const like_not = parseFloat(document.getElementById('like_not').value);
+
+  const post = bayes(prior, like, like_not);
+  document.getElementById('result').textContent =
+    "Posterior = " + post.toFixed(4);
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('prior', prior);
+  url.searchParams.set('like', like);
+  url.searchParams.set('like_not', like_not);
+
+  document.getElementById('copyBtn').style.display = "inline-block";
+  document.getElementById('copyBtn').onclick = () => {
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      const msg = document.getElementById('copyMsg');
+      msg.style.opacity = 1;
+      setTimeout(() => msg.style.opacity = 0, 1200);
+    });
+  };
+
+  document.getElementById('chartImg').src =
+    "data:image/svg+xml," +
+    encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='400' height='200'>
+      <rect width='400' height='200' fill='white'/>
+      <text x='20' y='100' font-size='20'>Posterior: ${post.toFixed(4)}</text>
+    </svg>`);
+  document.getElementById('chartImg').style.display = "block";
+});
+</script>
+</body>
+</html>
